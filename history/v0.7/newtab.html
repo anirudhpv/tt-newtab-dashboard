@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TigerTracks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal:#229FA1; --teal-dim:#1a7b7d;
+  --ink:#080e14; --surface:#101820; --surface2:#182028; --surface3:#1e2c38;
+  --border:rgba(34,159,161,.16); --border2:rgba(255,255,255,.06);
+  --text:#e4ecf2; --text-dim:#7a92a4; --text-muted:#3f5566;
+  --font-display:'Fraunces',Georgia,serif; --font-body:'DM Sans',sans-serif; --font-mono:'DM Mono',monospace;
+  --r:10px; --rs:6px;
+}
+.lm { --ink:#f2f6fa; --surface:#fff; --surface2:#edf2f7; --text:#0d1c28; --text-dim:#4a6474; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:var(--font-body); font-size:14px; min-height:100vh; transition:background .3s,color .3s; overflow-x:hidden; }
+.bg-noise { position:fixed; inset:0; z-index:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; opacity:.6; }
+#app { position:relative; z-index:1; max-width:1600px; margin:0 auto; padding:20px 24px; display:grid; grid-template-rows:auto 1fr auto; gap:18px; min-height:100vh; }
+header { display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; border-bottom:1px solid var(--border2); }
+.logo img { height:34px; mix-blend-mode:screen; }
+main { display:grid; grid-template-columns:1fr 300px; gap:14px; }
+.left { display:flex; flex-direction:column; gap:14px; }
+.card { background:var(--surface); border:1px solid var(--border2); border-radius:var(--r); padding:16px 18px; transition:background .3s; }
+.card-label { font-size:9.5px; font-weight:600; letter-spacing:1.4px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-bottom:12px; }
+.hero-time { font-family:var(--font-display); font-size:clamp(52px,5.5vw,80px); line-height:.95; letter-spacing:-2px; font-weight:300; }
+.hero-date { font-size:13px; color:var(--text-dim); font-weight:300; margin-top:6px; }
+.hero-tz { font-size:10px; font-family:var(--font-mono); color:var(--teal); margin-top:3px; }
+.tz-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; }
+.tz-cell { padding:9px 10px; background:var(--surface2); border-radius:var(--rs); border:1px solid var(--border2); }
+.tz-short { font-size:8.5px; font-weight:600; letter-spacing:.7px; text-transform:uppercase; color:var(--text-muted); font-family:var(--font-mono); }
+.tz-time { font-size:17px; font-weight:500; color:var(--text); letter-spacing:-.5px; font-family:var(--font-mono); }
+.tz-ampm { font-size:9px; color:var(--text-dim); font-family:var(--font-mono); }
+.pill-toggle { display:flex; background:var(--surface2); border:1px solid var(--border2); border-radius:20px; padding:2px; }
+.pill-btn { padding:5px 14px; font-size:10.5px; font-family:var(--font-mono); font-weight:500; color:var(--text-muted); cursor:pointer; border:none; background:none; border-radius:18px; transition:all .2s; }
+.pill-btn.active { background:var(--teal); color:#fff; }
+#world-canvas { width:100%; height:auto; display:block; border-radius:var(--rs); }
+.wx-icon { font-size:44px; }
+.wx-temp { font-family:var(--font-display); font-size:52px; line-height:1; letter-spacing:-2px; font-weight:300; }
+.wx-desc { font-size:12px; color:var(--text-dim); text-transform:capitalize; }
+.wx-loc { font-size:10px; color:var(--text-muted); font-family:var(--font-mono); }
+.link-item { display:flex; align-items:center; gap:9px; padding:7px 9px; background:var(--surface2); border:1px solid transparent; border-radius:var(--rs); cursor:pointer; text-decoration:none; color:var(--text); font-size:12.5px; transition:all .15s; }
+.link-item:hover { border-color:var(--teal); background:rgba(34,159,161,.06); }
+.link-fav { width:15px; height:15px; border-radius:3px; }
+.chat-messages { min-height:80px; max-height:200px; overflow-y:auto; margin-bottom:10px; display:flex; flex-direction:column; gap:10px; }
+.msg { padding:9px 12px; border-radius:10px; font-size:12.5px; max-width:90%; }
+.msg.user { background:var(--teal); color:#fff; align-self:flex-end; }
+.msg.assistant { background:var(--surface2); border:1px solid var(--border2); align-self:flex-start; }
+.msg-md p { margin:0 0 5px; } .msg-md p:last-child { margin:0; }
+.msg-md code { font-family:var(--font-mono); font-size:11px; background:var(--surface3); padding:1px 4px; border-radius:3px; color:var(--teal); }
+.msg-md pre { background:var(--surface3); border:1px solid var(--border2); border-radius:6px; padding:8px; overflow-x:auto; margin:6px 0; }
+.msg-md pre code { background:none; color:var(--text); }
+.msg-md a { color:var(--teal); text-decoration:underline; }
+.msg-md ul,.msg-md ol { padding-left:16px; margin:4px 0; }
+.chat-row { display:flex; gap:7px; }
+.chat-in { flex:1; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--rs); padding:8px 12px; color:var(--text); font-family:var(--font-body); font-size:13px; outline:none; transition:border-color .2s; }
+.chat-in:focus { border-color:var(--teal); }
+.chat-btn { padding:8px 14px; background:var(--teal); border:none; border-radius:var(--rs); color:#fff; font-weight:600; font-size:12.5px; cursor:pointer; }
+.chat-btn:hover { background:var(--teal-dim); }
+.icon-btn { width:32px; height:32px; border:1px solid var(--border2); background:var(--surface2); border-radius:var(--rs); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted); font-size:14px; transition:all .2s; }
+.icon-btn:hover { border-color:var(--teal); color:var(--teal); }
+footer { display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid var(--border2); font-size:9.5px; font-family:var(--font-mono); color:var(--text-muted); }
+.ft-tag { color:var(--teal); }
+</style>
+</head>
+<body>
+<div class="bg-noise"></div>
+<div id="app">
+  <header>
+    <div class="logo"><img id="tt-logo" src="tt_white_logo.png" alt="TigerTracks"></div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="icon-btn" id="theme-btn" title="Toggle theme">☀</button>
+      <button class="icon-btn" id="settings-btn" title="Settings">⚙</button>
+    </div>
+  </header>
+  <main>
+    <div class="left">
+      <div class="card">
+        <div class="hero-time" id="hero-time">00:00</div>
+        <div class="hero-date" id="hero-date">—</div>
+        <div class="hero-tz" id="hero-tz">—</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-label" style="margin-bottom:0">World Clocks</div>
+          <div class="pill-toggle">
+            <button class="pill-btn active" id="tz-grid-btn">⊞ Grid</button>
+            <button class="pill-btn" id="tz-map-btn">🌐 Map</button>
+          </div>
+        </div>
+        <div id="tz-grid-view"><div class="tz-grid" id="tz-grid"></div></div>
+        <div id="tz-map-view" style="display:none">
+          <canvas id="world-canvas" width="900" height="460"></canvas>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-label">GLM — Z.ai</div>
+        <div class="chat-messages" id="chat-messages">
+          <div style="color:var(--text-muted);font-size:12px;padding:16px;text-align:center;font-style:italic;font-family:var(--font-display)">Ask anything — strategy, copy, analysis, research.</div>
+        </div>
+        <div class="chat-row">
+          <input type="text" class="chat-in" id="chat-in" placeholder="Ask GLM…">
+          <button class="chat-btn" id="chat-send">Send</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-label" style="margin-bottom:0">Weather</div>
+          <div class="pill-toggle">
+            <button class="pill-btn active" id="wx-f-btn">°F</button>
+            <button class="pill-btn" id="wx-c-btn">°C</button>
+          </div>
+        </div>
+        <div id="weather"><div style="color:var(--text-muted);font-size:12px">Detecting location…</div></div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-label">Quick Links</div>
+        <div id="links-list" style="display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <span class="ft-tag">TigerTracks</span>
+    <span id="footer-date"></span>
+  </footer>
+</div>
+<script src="js/topojson.min.js"></script>
+<script src="js/purify.min.js"></script>
+<script src="js/marked.umd.js"></script>
+<script src="newtab.js"></script>
+</body>
+</html>
