@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "TigerTracks New Tab",
+  "version": "0.6.0",
+  "description": "TigerTracks agency dashboard — world clocks, map, weather, links, Z.ai GLM chat.",
+  "icons": { "16": "icon16.png", "128": "icon.png" },
+  "chrome_url_overrides": { "newtab": "newtab.html" },
+  "permissions": ["geolocation"],
+  "action": { "default_popup": "popup.html", "default_icon": "icon.png" }
+}
