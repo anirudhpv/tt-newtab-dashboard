@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    width: 220px; padding: 14px;
+    background: #1B2126; color: #e8edf2;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+  }
+  .title {
+    font-size: 14px; font-weight: 600;
+    color: #229FA1; margin-bottom: 10px;
+    font-family: Georgia, serif; font-style: italic;
+  }
+  .btn {
+    display: block; width: 100%;
+    padding: 8px 12px;
+    background: #243039; border: 1px solid rgba(34,159,161,0.2);
+    border-radius: 6px; color: #e8edf2;
+    font-size: 12px; cursor: pointer;
+    text-align: left; margin-bottom: 6px;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: #229FA1; color: #229FA1; }
+  .btn-primary { background: #229FA1; color: white; border-color: #229FA1; }
+  .btn-primary:hover { background: #1a7b7d; color: white; }
+</style>
+</head>
+<body>
+<div class="title">TigerTracks</div>
+<button class="btn btn-primary" onclick="openNewTab()">Open Dashboard</button>
+<button class="btn" onclick="openSettings()">Settings</button>
+<script>
+function openNewTab() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html') });
+}
+function openSettings() {
+  chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html') + '#settings' });
+}
+</script>
+</body>
+</html>
