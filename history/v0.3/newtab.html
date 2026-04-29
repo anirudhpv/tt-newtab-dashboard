@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TigerTracks</title>
+<style>
+:root {
+  --teal:#229FA1; --ink:#0A1119; --surface:#1B2126;
+  --text:#e8edf2; --text-dim:#7a92a4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--ink); color:var(--text); font-family:'Segoe UI',sans-serif; font-size:14px; min-height:100vh; }
+#app { max-width:1400px; margin:0 auto; padding:24px; display:grid; grid-template-rows:auto 1fr auto; gap:20px; min-height:100vh; }
+header { display:flex; align-items:center; justify-content:space-between; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,.08); }
+.logo-text { font-size:20px; font-weight:700; color:var(--teal); font-style:italic; }
+main { display:grid; grid-template-columns:1fr 280px; gap:16px; }
+.left { display:flex; flex-direction:column; gap:16px; }
+.card { background:var(--surface); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:16px; }
+.card-label { font-size:9px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--teal); margin-bottom:12px; }
+/* Clock */
+#hero-time { font-size:72px; font-weight:300; letter-spacing:-3px; line-height:1; }
+#hero-date { font-size:13px; color:var(--text-dim); margin-top:6px; }
+/* World clocks */
+.tz-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+.tz-cell { padding:8px; background:rgba(255,255,255,.04); border-radius:6px; text-align:center; }
+.tz-city { font-size:8px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px; }
+.tz-time { font-size:16px; font-weight:500; margin-top:2px; }
+/* Weather */
+.wx-main { display:flex; align-items:center; gap:12px; }
+.wx-icon { font-size:40px; }
+.wx-temp { font-size:48px; font-weight:300; }
+.wx-desc { font-size:12px; color:var(--text-dim); margin-top:4px; }
+/* Links */
+.link-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; text-decoration:none; color:var(--text); font-size:12px; transition:background .15s; }
+.link-item:hover { background:rgba(34,159,161,.1); }
+.link-fav { width:14px; height:14px; border-radius:2px; }
+/* Chat */
+.chat-messages { min-height:80px; max-height:200px; overflow-y:auto; margin-bottom:10px; display:flex; flex-direction:column; gap:8px; }
+.msg { padding:8px 10px; border-radius:8px; font-size:12px; max-width:90%; }
+.msg.user { background:var(--teal); color:#fff; align-self:flex-end; }
+.msg.assistant { background:rgba(255,255,255,.06); align-self:flex-start; }
+.chat-row { display:flex; gap:6px; }
+.chat-in { flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:6px; padding:7px 10px; color:var(--text); font-size:12.5px; outline:none; }
+.chat-btn { padding:7px 14px; background:var(--teal); border:none; border-radius:6px; color:#fff; font-weight:600; cursor:pointer; font-size:12px; }
+footer { font-size:9.5px; color:var(--text-dim); display:flex; justify-content:space-between; padding-top:12px; border-top:1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo-text">TigerTracks</div>
+    <button id="settings-btn" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:var(--text-dim);padding:5px 12px;cursor:pointer;font-size:12px;">⚙ Settings</button>
+  </header>
+  <main>
+    <div class="left">
+      <div class="card">
+        <div id="hero-time">00:00</div>
+        <div id="hero-date"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">World Clocks</div>
+        <div class="tz-grid" id="tz-grid"></div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-label">GLM — Claude</div>
+        <div class="chat-messages" id="chat-messages">
+          <div style="color:var(--text-dim);font-size:12px;padding:16px;text-align:center;font-style:italic">Ask anything…</div>
+        </div>
+        <div class="chat-row">
+          <input type="text" class="chat-in" id="chat-in" placeholder="Ask Claude…">
+          <button class="chat-btn" id="chat-send">Send</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-label">Weather</div>
+        <div id="weather">
+          <div style="color:var(--text-dim);font-size:12px">Detecting location…</div>
+        </div>
+      </div>
+      <div class="card" style="flex:1">
+        <div class="card-label">Quick Links</div>
+        <div id="links-list"></div>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <span>TigerTracks</span>
+    <span id="footer-date"></span>
+  </footer>
+</div>
+<script src="newtab.js"></script>
+</body>
+</html>
