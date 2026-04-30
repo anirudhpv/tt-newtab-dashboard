@@ -20,13 +20,21 @@ const WMO = {
   95:{d:'Thunderstorm',e:'⛈️'},96:{d:'Thunderstorm',e:'⛈️'},99:{d:'Thunderstorm',e:'⛈️'},
 };
 
+// Correct favicons for Google products that S2 gets wrong
+const FAVICON_OVERRIDES = {
+  'docs.google.com':     'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico',
+  'drive.google.com':    'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png',
+  'calendar.google.com': 'https://calendar.google.com/googlecalendar/images/favicons_2020q4/calendar_31.ico',
+};
+
 // ── STATE ──
 let apiKey      = '';
 let isDark      = true;
 let density     = 'comfortable';
-let wxUnit      = 'F';       // 'F' or 'C'
-let wxData      = null;      // raw fahrenheit values from API
-let memory      = '';        // persistent cross-chat context
+let wxUnit      = 'F';
+let wxData      = null;
+let wxHourly    = null;
+let memory      = '';
 let tzView      = 'grid';
 let mapReady    = false;
 let mapWorld    = null;
@@ -34,15 +42,20 @@ let mapCtx      = null;
 let mapPaths    = [];
 let sessionStart= Date.now();
 
-// Chat sessions: { id, label, messages:[], createdAt, updatedAt }
-let sessions    = [];
-let activeId    = null;      // current session id
+// Sidebar / panel visibility
+let sbVisible   = true;   // sidebar shown or hidden
+let sbExpanded  = true;   // sidebar expanded (true) or icon-rail (false)
+let rpVisible   = true;   // right panel visible
 
-// ── STORAGE KEYS ──
+// Chat sessions
+let sessions    = [];
+let activeId    = null;
+
 const SK = {
   settings: 'tt_settings',
   sessions: 'tt_sessions',
   memory:   'tt_memory',
+  sidebar:  'tt_sidebar',
 };
 
 // ── INIT ──
@@ -53,6 +66,7 @@ function init() {
   setInterval(tick, 1000);
   fetchWeather();
   renderLinks();
+  renderSidebarLinks();
   renderSessions();
   loadActiveSession();
   checkApiKey();
@@ -106,23 +120,31 @@ function bindEvents() {
   document.getElementById('mt-accept').addEventListener('click', acceptMemory);
   document.getElementById('mt-reject').addEventListener('click', () => hideMemoryToast());
   document.getElementById('mt-edit-btn').addEventListener('click', toggleMemoryEdit);
+  // Sidebar toggle buttons
+  document.getElementById('sb-toggle-btn').addEventListener('click', toggleSidebar);
+  document.getElementById('sb-rail-btn').addEventListener('click', toggleSidebarExpand);
+  // Right panel toggle
+  document.getElementById('right-panel-btn').addEventListener('click', toggleRightPanel);
 }
 
 // ── STORAGE ──
 function loadStorage() {
   try {
     const s = JSON.parse(localStorage.getItem(SK.settings) || '{}');
-    apiKey   = s.apiKey   || '';
-    isDark   = s.isDark   !== false;
-    density  = s.density  || 'comfortable';
-    wxUnit   = s.wxUnit   || 'F';
+    apiKey  = s.apiKey   || '';
+    isDark  = s.isDark   !== false;
+    density = s.density  || 'comfortable';
+    wxUnit  = s.wxUnit   || 'F';
   } catch {}
-  try {
-    sessions = JSON.parse(localStorage.getItem(SK.sessions) || '[]');
-  } catch { sessions = []; }
+  try { sessions = JSON.parse(localStorage.getItem(SK.sessions) || '[]'); } catch { sessions = []; }
   memory = localStorage.getItem(SK.memory) || '';
-  applyTheme(); applyDensity(); applyWxUnit();
-  // ensure at least one session
+  try {
+    const sb = JSON.parse(localStorage.getItem(SK.sidebar) || '{}');
+    sbVisible  = sb.sbVisible  !== false;
+    sbExpanded = sb.sbExpanded !== false;
+    rpVisible  = sb.rpVisible  !== false;
+  } catch {}
+  applyTheme(); applyDensity(); applyWxUnit(); applySidebarState(); applyRightPanel();
   if (!sessions.length) newSession(false);
   else activeId = sessions[0].id;
 }
@@ -130,19 +152,52 @@ function loadStorage() {
 function saveSettings_storage() {
   localStorage.setItem(SK.settings, JSON.stringify({ apiKey, isDark, density, wxUnit }));
 }
-
-function saveSessions() {
-  localStorage.setItem(SK.sessions, JSON.stringify(sessions));
+function saveSessions() { localStorage.setItem(SK.sessions, JSON.stringify(sessions)); }
+function saveMemory()   { localStorage.setItem(SK.memory, memory); }
+function saveSidebarState() {
+  localStorage.setItem(SK.sidebar, JSON.stringify({ sbVisible, sbExpanded, rpVisible }));
 }
-
-function saveMemory() {
-  localStorage.setItem(SK.memory, memory);
-}
-
 function links_get() {
   try { return JSON.parse(localStorage.getItem('tt_links') || 'null') || defaultLinks(); } catch { return defaultLinks(); }
 }
 function links_save(l) { localStorage.setItem('tt_links', JSON.stringify(l)); }
+
+// ── SIDEBAR ──
+function applySidebarState() {
+  const sb = document.getElementById('left-sidebar');
+  const btn = document.getElementById('sb-toggle-btn');
+  const railBtn = document.getElementById('sb-rail-btn');
+  sb.classList.toggle('hidden', !sbVisible);
+  sb.classList.toggle('rail', !sbExpanded);
+  railBtn.textContent = sbExpanded ? '⊟' : '⊞';
+  btn.classList.toggle('active-btn', sbVisible);
+}
+
+function toggleSidebar() {
+  sbVisible = !sbVisible;
+  applySidebarState();
+  saveSidebarState();
+}
+
+function toggleSidebarExpand() {
+  sbExpanded = !sbExpanded;
+  applySidebarState();
+  saveSidebarState();
+}
+
+function applyRightPanel() {
+  const grid = document.getElementById('main-grid');
+  const btn  = document.getElementById('right-panel-btn');
+  grid.classList.toggle('with-right', rpVisible);
+  btn.textContent = rpVisible ? '⊟' : '⊞';
+  btn.title = rpVisible ? 'Hide links panel' : 'Show links panel';
+}
+
+function toggleRightPanel() {
+  rpVisible = !rpVisible;
+  applyRightPanel();
+  saveSidebarState();
+}
 
 // ── CLOCK ──
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -361,7 +416,7 @@ async function fetchWeather() {
       const{latitude:lat,longitude:lon}=pos.coords;
       try {
         const[wxRes,geoRes]=await Promise.all([
-          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=auto`),
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation&hourly=temperature_2m,weather_code,precipitation_probability&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=auto&forecast_days=2`),
           fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
         ]);
         const wx=await wxRes.json(), geo=await geoRes.json();
@@ -374,6 +429,14 @@ async function fetchWeather() {
           code:     wx.current.weather_code,
           city:     geo.address?.city||geo.address?.town||geo.address?.village||geo.address?.county||'Your location',
           state:    geo.address?.state_code||geo.address?.country_code?.toUpperCase()||'',
+        };
+        // Store hourly data
+        wxHourly = {
+          times:  wx.hourly.time,
+          temps:  wx.hourly.temperature_2m,
+          codes:  wx.hourly.weather_code,
+          precip: wx.hourly.precipitation_probability,
+          currentTime: wx.current_weather?.time || wx.current.time,
         };
         renderWeather();
       } catch {
@@ -408,9 +471,46 @@ function renderWeather() {
       <div><span class="wx-stat-label">Wind</span><div class="wx-stat-val">${Math.round(wxData.wind)} mph</div></div>
       <div><span class="wx-stat-label">Precip</span><div class="wx-stat-val">${wxData.precip} mm</div></div>
     </div>
-    <div style="text-align:right;margin-top:10px">
+    ${renderHourlyStrip()}
+    <div style="text-align:right;margin-top:8px">
       <span class="wx-link wx-retry" style="font-size:9.5px">↻ Refresh</span>
     </div>`;
+}
+
+function renderHourlyStrip() {
+  if(!wxHourly || !wxHourly.times) return '';
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentDate = now.toISOString().slice(0,10);
+
+  // Find the index of the current hour in the hourly data
+  let startIdx = wxHourly.times.findIndex(t => {
+    const d = new Date(t);
+    return d >= now;
+  });
+  if(startIdx < 0) startIdx = 0;
+
+  const hours = [];
+  for(let i=startIdx; i<Math.min(startIdx+12, wxHourly.times.length); i++) {
+    const t = new Date(wxHourly.times[i]);
+    const h = t.getHours();
+    const ampm = h>=12 ? 'PM' : 'AM';
+    const h12  = h%12||12;
+    const wmo  = WMO[wxHourly.codes[i]]||{e:'🌡️'};
+    const precip = wxHourly.precip[i] ?? 0;
+    const isCurrent = i===startIdx;
+    hours.push(`<div class="wx-hour${isCurrent?' current-hour':''}">
+      <div class="wx-hour-time">${h12}${ampm}</div>
+      <div class="wx-hour-icon">${wmo.e}</div>
+      <div class="wx-hour-temp">${displayTemp(wxHourly.temps[i])}°</div>
+      <div class="wx-hour-precip">${precip}%</div>
+    </div>`);
+  }
+
+  return `<div class="wx-hourly">
+    <div class="wx-hourly-label">Next 12 Hours</div>
+    <div class="wx-hourly-scroll">${hours.join('')}</div>
+  </div>`;
 }
 
 function setWxUnit(u) {
@@ -442,7 +542,6 @@ function loadActiveSession() {
   if(!sess) return;
   activeId=sess.id;
   document.getElementById('chat-session-label').textContent=sess.label;
-  // Clear and re-render messages
   const c=document.getElementById('chat-messages');
   c.innerHTML='';
   if(!sess.messages.length) {
@@ -453,20 +552,14 @@ function loadActiveSession() {
   checkApiKey();
 }
 
-function switchSession(id) {
-  activeId=id;
-  closeDrawer();
-  loadActiveSession();
-  renderSessions();
-}
+function switchSession(id) { activeId=id; closeDrawer(); loadActiveSession(); renderSessions(); }
 
 function deleteSession(id, e) {
   e.stopPropagation();
   sessions=sessions.filter(s=>s.id!==id);
   if(!sessions.length) newSession(false);
   if(activeId===id) { activeId=sessions[0].id; loadActiveSession(); }
-  saveSessions();
-  renderSessions();
+  saveSessions(); renderSessions();
 }
 
 function renderSessions() {
@@ -494,7 +587,6 @@ function renderSessions() {
   });
 }
 
-// Auto-label session from first user message using GLM
 async function autoLabelSession(sess, firstMsg) {
   if(!apiKey) { sess.label=firstMsg.slice(0,40)+(firstMsg.length>40?'…':''); saveSessions(); renderSessions(); return; }
   try {
@@ -549,7 +641,6 @@ async function sendChat() {
 
   const thinking=appendThinking();
 
-  // Build messages array with memory as system context
   const systemMsg=`You are a concise AI assistant in a TigerTracks performance marketing agency dashboard. Be brief and practical.${memory?'\n\nContext about the user:\n'+memory:''}`;
 
   try {
@@ -573,7 +664,6 @@ async function sendChat() {
     sess.messages.push({role:'assistant',content:reply,sources});
     sess.updatedAt=Date.now();
     saveSessions();
-    // Auto memory suggestion after every session turn (every 6 messages)
     if(sess.messages.length>0 && sess.messages.length%6===0) suggestMemory(false);
   } catch {
     thinking.remove();
@@ -624,12 +714,7 @@ function showMemoryToast(text) {
   document.getElementById('mt-edit-btn').textContent='Edit';
   document.getElementById('memory-toast').classList.add('show');
 }
-
-function hideMemoryToast() {
-  document.getElementById('memory-toast').classList.remove('show');
-  pendingMemory='';
-}
-
+function hideMemoryToast() { document.getElementById('memory-toast').classList.remove('show'); pendingMemory=''; }
 function toggleMemoryEdit() {
   const edit=document.getElementById('memory-toast-edit');
   const body=document.getElementById('memory-toast-body');
@@ -642,7 +727,6 @@ function toggleMemoryEdit() {
     pendingMemory=edit.value;
   }
 }
-
 function acceptMemory() {
   const editEl=document.getElementById('memory-toast-edit');
   const finalText=editEl.style.display!=='none'?editEl.value:pendingMemory;
@@ -653,7 +737,7 @@ function acceptMemory() {
   hideMemoryToast();
 }
 
-// ── MARKDOWN RENDERER ──
+// ── MARKDOWN ──
 function renderMarkdown(text) {
   marked.setOptions({breaks:true,gfm:true});
   const raw=marked.parse(text);
@@ -710,15 +794,18 @@ function esc(t) {
 }
 function escAttr(s) { return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-// ── LINKS ──
-const GOOGLE_MULTI = [
-  { name:'Gmail',     base:'https://mail.google.com/mail/u/{n}/#inbox',        fav:'mail.google.com' },
-  { name:'Sheets',    base:'https://docs.google.com/spreadsheets/u/{n}/',       fav:'docs.google.com' },
-  { name:'Docs',      base:'https://docs.google.com/document/u/{n}/',           fav:'docs.google.com' },
-  { name:'Drive',     base:'https://drive.google.com/drive/u/{n}/',             fav:'drive.google.com' },
-  { name:'Calendar',  base:'https://calendar.google.com/calendar/u/{n}/r',      fav:'calendar.google.com' },
-];
+// ── FAVICON HELPERS ──
+function getFaviconUrl(url, fav) {
+  // For multi-links, check base URL patterns first
+  const checkUrl = url || fav || '';
+  if (/spreadsheets/.test(checkUrl)) return 'https://ssl.gstatic.com/docs/spreadsheets/favicon3.ico';
+  const d = fav || (url ? domain(url) : null);
+  if (!d) return null;
+  if (FAVICON_OVERRIDES[d]) return FAVICON_OVERRIDES[d];
+  return `https://www.google.com/s2/favicons?domain=${d}&sz=32`;
+}
 
+// ── LINKS ──
 function defaultLinks() {
   return [
     { type:'multi', name:'Gmail',    base:'https://mail.google.com/mail/u/{n}/#inbox',      fav:'mail.google.com' },
@@ -744,21 +831,21 @@ function renderLinks() {
     if(l.type==='multi') return renderMultiLink(l,i);
     return renderSingleLink(l,i);
   }).join('');
-  // bind delete buttons
   grid.querySelectorAll('.link-del').forEach(b=>b.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();
-    const ll=links_get(); ll.splice(Number(b.dataset.i),1); links_save(ll); renderLinks();
+    const ll=links_get(); ll.splice(Number(b.dataset.i),1); links_save(ll); renderLinks(); renderSidebarLinks();
   }));
   grid.querySelectorAll('.multi-link-del').forEach(b=>b.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();
-    const ll=links_get(); ll.splice(Number(b.dataset.i),1); links_save(ll); renderLinks();
+    const ll=links_get(); ll.splice(Number(b.dataset.i),1); links_save(ll); renderLinks(); renderSidebarLinks();
   }));
 }
 
 function renderSingleLink(l,i) {
-  const d=domain(l.url);
-  const fav=d?`<img class="link-fav" src="https://www.google.com/s2/favicons?domain=${d}&sz=32" alt="">`
-             :`<div class="link-fav-ph">${esc(l.name[0].toUpperCase())}</div>`;
+  const favUrl=getFaviconUrl(l.url, null);
+  const fav=favUrl
+    ? `<img class="link-fav" src="${escAttr(favUrl)}" alt="">`
+    : `<div class="link-fav-ph">${esc(l.name[0].toUpperCase())}</div>`;
   return `<a class="link-item" href="${escAttr(l.url)}" target="_blank" rel="noopener">
     ${fav}<span class="link-name">${esc(l.name)}</span>
     <button class="link-del" data-i="${i}">×</button>
@@ -766,17 +853,52 @@ function renderSingleLink(l,i) {
 }
 
 function renderMultiLink(l,i) {
+  const favUrl=getFaviconUrl(l.base, l.fav);
   const accts=[0,1,2,3,4,5,6,7].map(n=>
     `<a class="acct-btn" href="${escAttr(l.base.replace('{n}',n))}" target="_blank" rel="noopener">${n}</a>`
   ).join('');
   return `<div class="multi-link">
     <div class="multi-link-icon">
-      <img class="link-fav" src="https://www.google.com/s2/favicons?domain=${l.fav}&sz=32" alt="">
+      <img class="link-fav" src="${escAttr(favUrl)}" alt="">
       <span class="multi-link-label">${esc(l.name)}</span>
     </div>
     <div class="multi-link-divider"></div>
     <div class="multi-link-accounts">${accts}</div>
     <button class="multi-link-del" data-i="${i}">×</button>
+  </div>`;
+}
+
+// ── SIDEBAR LINKS ──
+function renderSidebarLinks() {
+  const list = links_get();
+  const container = document.getElementById('sb-links');
+  container.innerHTML = list.map(l => {
+    if (l.type === 'multi') return renderSidebarMultiLink(l);
+    return renderSidebarSingleLink(l);
+  }).join('');
+}
+
+function renderSidebarSingleLink(l) {
+  const favUrl = getFaviconUrl(l.url, null);
+  const fav = favUrl
+    ? `<img class="sb-fav" src="${escAttr(favUrl)}" alt="">`
+    : `<div class="sb-fav-ph">${esc(l.name[0].toUpperCase())}</div>`;
+  return `<a class="sb-link" href="${escAttr(l.url)}" target="_blank" rel="noopener" data-tip="${escAttr(l.name)}">
+    ${fav}<span class="sb-name">${esc(l.name)}</span>
+  </a>`;
+}
+
+function renderSidebarMultiLink(l) {
+  const favUrl = getFaviconUrl(l.base, l.fav);
+  const accts = [0,1,2,3,4,5,6,7].map(n =>
+    `<a class="sb-acct-btn" href="${escAttr(l.base.replace('{n}',n))}" target="_blank" rel="noopener">${n}</a>`
+  ).join('');
+  return `<div class="sb-multi" data-tip="${escAttr(l.name)}">
+    <div class="sb-multi-row">
+      <img class="sb-fav" src="${escAttr(favUrl)}" alt="">
+      <span class="sb-multi-name">${esc(l.name)}</span>
+      <div class="sb-multi-accts">${accts}</div>
+    </div>
   </div>`;
 }
 
@@ -789,16 +911,25 @@ function addLink() {
   let name; try{name=new URL(url).hostname.replace('www.','');}catch{name=url;}
   const ll=links_get();
   ll.push({type:'link',name,url});
-  links_save(ll); renderLinks();
+  links_save(ll); renderLinks(); renderSidebarLinks();
   document.getElementById('link-input').value='';
 }
 
 // ── THEME ──
-function toggleTheme(){isDark=!isDark;applyTheme();saveSettings_storage();}
-function applyTheme(){
+function toggleTheme() {
+  isDark=!isDark;
+  applyTheme();
+  saveSettings_storage();
+}
+function applyTheme() {
   document.documentElement.classList.toggle('lm',!isDark);
   document.getElementById('theme-btn').textContent=isDark?'☀':'☾';
-  // SVG colors handled by CSS class
+  // Swap logo sources for dark/light
+  const logoSrc = isDark ? 'tt_white_logo.png' : 'tt_black_logo.png';
+  const el = document.getElementById('tt-logo');
+  const sbEl = document.getElementById('sb-logo');
+  if(el) el.src = logoSrc;
+  if(sbEl) sbEl.src = logoSrc;
   if(tzView==='map'&&mapReady) drawMap(new Date());
 }
 
