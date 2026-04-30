@@ -62,8 +62,9 @@ html,body{width:100%;min-height:100vh;background:var(--ink);color:var(--text);fo
 /* Sidebar standard link */
 .sb-link{display:flex;align-items:center;gap:10px;padding:7px 14px;text-decoration:none;color:var(--text);font-size:12.5px;white-space:nowrap;transition:all .15s;border-left:2px solid transparent;position:relative}
 .sb-link:hover{background:var(--teal-glow);border-left-color:var(--teal);color:var(--teal)}
-.sb-link .sb-fav{width:16px;height:16px;border-radius:3px;flex-shrink:0;object-fit:contain}
-.sb-link .sb-fav-ph{width:16px;height:16px;border-radius:3px;flex-shrink:0;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;font-family:var(--font-mono)}
+/* Normalise all sidebar favicons to identical 16×16 squares */
+.sb-fav{width:16px;height:16px;border-radius:3px;flex-shrink:0;object-fit:cover;display:block}
+.sb-fav-ph{width:16px;height:16px;border-radius:3px;flex-shrink:0;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;font-family:var(--font-mono)}
 .sb-link .sb-name{overflow:hidden;text-overflow:ellipsis;transition:opacity .15s}
 #left-sidebar.rail .sb-link .sb-name{opacity:0;width:0;overflow:hidden}
 #left-sidebar.rail .sb-link{padding:10px;justify-content:center}

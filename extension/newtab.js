@@ -21,10 +21,12 @@ const WMO = {
 };
 
 // Correct favicons for Google products that S2 gets wrong
+// All override URLs serve square images at consistent sizes
 const FAVICON_OVERRIDES = {
   'docs.google.com':     'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico',
-  'drive.google.com':    'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png',
+  'drive.google.com':    'https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_32dp.png',
   'calendar.google.com': 'https://calendar.google.com/googlecalendar/images/favicons_2020q4/calendar_31.ico',
+  'mail.google.com':     'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico',
 };
 
 // ── STATE ──
@@ -795,14 +797,13 @@ function esc(t) {
 function escAttr(s) { return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // ── FAVICON HELPERS ──
-function getFaviconUrl(url, fav) {
-  // For multi-links, check base URL patterns first
+function getFaviconUrl(url, fav, sz=32) {
   const checkUrl = url || fav || '';
   if (/spreadsheets/.test(checkUrl)) return 'https://ssl.gstatic.com/docs/spreadsheets/favicon3.ico';
   const d = fav || (url ? domain(url) : null);
   if (!d) return null;
   if (FAVICON_OVERRIDES[d]) return FAVICON_OVERRIDES[d];
-  return `https://www.google.com/s2/favicons?domain=${d}&sz=32`;
+  return `https://www.google.com/s2/favicons?domain=${d}&sz=${sz}`;
 }
 
 // ── LINKS ──
@@ -879,9 +880,9 @@ function renderSidebarLinks() {
 }
 
 function renderSidebarSingleLink(l) {
-  const favUrl = getFaviconUrl(l.url, null);
+  const favUrl = getFaviconUrl(l.url, null, 16);
   const fav = favUrl
-    ? `<img class="sb-fav" src="${escAttr(favUrl)}" alt="">`
+    ? `<img class="sb-fav" src="${escAttr(favUrl)}" alt="" width="16" height="16">`
     : `<div class="sb-fav-ph">${esc(l.name[0].toUpperCase())}</div>`;
   return `<a class="sb-link" href="${escAttr(l.url)}" target="_blank" rel="noopener" data-tip="${escAttr(l.name)}">
     ${fav}<span class="sb-name">${esc(l.name)}</span>
@@ -889,13 +890,13 @@ function renderSidebarSingleLink(l) {
 }
 
 function renderSidebarMultiLink(l) {
-  const favUrl = getFaviconUrl(l.base, l.fav);
+  const favUrl = getFaviconUrl(l.base, l.fav, 16);
   const accts = [0,1,2,3,4,5,6,7].map(n =>
     `<a class="sb-acct-btn" href="${escAttr(l.base.replace('{n}',n))}" target="_blank" rel="noopener">${n}</a>`
   ).join('');
   return `<div class="sb-multi" data-tip="${escAttr(l.name)}">
     <div class="sb-multi-row">
-      <img class="sb-fav" src="${escAttr(favUrl)}" alt="">
+      <img class="sb-fav" src="${escAttr(favUrl)}" alt="" width="16" height="16">
       <span class="sb-multi-name">${esc(l.name)}</span>
       <div class="sb-multi-accts">${accts}</div>
     </div>
