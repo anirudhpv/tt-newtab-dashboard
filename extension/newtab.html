@@ -116,8 +116,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding-bot
 .header-left{display:flex;align-items:center;gap:8px}
 .logo{display:flex;align-items:center}
 #tt-logo{height:34px;width:auto}
-.lm #tt-logo{mix-blend-mode:multiply}
-html:not(.lm) #tt-logo{mix-blend-mode:screen}
+/* Single logo file (black-on-white).
+   Dark mode: invert to white, screen blend removes black bg.
+   Light mode: multiply blend removes white bg. */
+#tt-logo,#sb-logo{mix-blend-mode:multiply}
+html:not(.lm) #tt-logo,html:not(.lm) #sb-logo{filter:invert(1);mix-blend-mode:screen}
 .header-right{display:flex;align-items:center;gap:6px}
 
 /* ── PILL TOGGLE ── */
@@ -390,7 +393,7 @@ body.compact .chat-messages{min-height:70px;max-height:130px}
   <aside id="left-sidebar">
     <div class="sb-header">
       <div class="sb-logo-wrap">
-        <img class="sb-logo" id="sb-logo" src="tt_white_logo.png" alt="TigerTracks">
+        <img class="sb-logo" id="sb-logo" src="tt_black_logo.png" alt="TigerTracks">
       </div>
       <button class="icon-btn" id="sb-rail-btn" title="Minimize sidebar" style="flex-shrink:0">⊟</button>
     </div>
@@ -405,7 +408,7 @@ body.compact .chat-messages{min-height:70px;max-height:130px}
       <div class="header-left">
         <button class="icon-btn" id="sb-toggle-btn" title="Toggle sidebar">⊞</button>
         <div class="logo">
-          <img id="tt-logo" src="tt_white_logo.png" alt="TigerTracks">
+          <img id="tt-logo" src="tt_black_logo.png" alt="TigerTracks">
         </div>
       </div>
       <div class="header-right">

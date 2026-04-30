@@ -924,12 +924,7 @@ function toggleTheme() {
 function applyTheme() {
   document.documentElement.classList.toggle('lm',!isDark);
   document.getElementById('theme-btn').textContent=isDark?'☀':'☾';
-  // Swap logo sources for dark/light
-  const logoSrc = isDark ? 'tt_white_logo.png' : 'tt_black_logo.png';
-  const el = document.getElementById('tt-logo');
-  const sbEl = document.getElementById('sb-logo');
-  if(el) el.src = logoSrc;
-  if(sbEl) sbEl.src = logoSrc;
+  // CSS handles dark/light via filter:invert + mix-blend-mode — no src swap needed
   if(tzView==='map'&&mapReady) drawMap(new Date());
 }
 
