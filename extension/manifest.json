@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TigerTracks New Tab",
-  "version": "2.0.0",
-  "description": "TigerTracks agency dashboard \u2014 world clocks, weather, multi-session AI chat, quick links.",
+  "version": "3.0.0",
+  "description": "TigerTracks agency dashboard — world clocks, weather, multi-session AI chat, quick links, and a persistent Pomodoro timer.",
   "icons": {
     "16": "icon16.png",
     "128": "icon.png"
@@ -10,9 +10,15 @@
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
     "storage",
-    "geolocation"
+    "geolocation",
+    "alarms",
+    "notifications",
+    "offscreen"
   ],
   "action": {
     "default_popup": "popup.html",
