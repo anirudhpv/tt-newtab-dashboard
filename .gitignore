@@ -9,3 +9,6 @@ Thumbs.db
 # Extension artifacts
 *.crx
 *.pem
+
+# Test / tooling artifacts
+.playwright-mcp/
